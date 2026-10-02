@@ -1,0 +1,461 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import {
+  startTransition,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ComponentType,
+  type ReactNode,
+  type MouseEvent,
+} from "react";
+import { markAppNavigating } from "@/lib/hooks";
+import {
+  Bot,
+  Boxes,
+  CandlestickChart,
+  ChartNoAxesCombined,
+  ChevronsLeft,
+  ChevronsRight,
+  Coins,
+  DollarSign,
+  Eye,
+  FlaskConical,
+  Globe2,
+  Grid2x2,
+  Home,
+  Landmark,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  Newspaper,
+  Settings,
+  X,
+} from "lucide-react";
+import { TickerTape } from "@/components/ticker-tape";
+import { GlobalSearch } from "@/components/search";
+import { OrcaWordmark, OrcaMark, OrcaMobileBrand } from "@/components/logo";
+import { useApi } from "@/lib/hooks";
+import { useSettings } from "@/lib/settings";
+import { ErrorBoundary } from "@/components/error-boundary";
+import { NotifBell } from "@/components/notif-bell";
+import { PriceAlertEngine } from "@/components/price-alert-engine";
+
+const NAV_SECTIONS: {
+  title: string;
+  items: {
+    href: string;
+    label: string;
+    icon: ComponentType<{ className?: string }>;
+    core?: boolean;
+  }[];
+}[] = [
+  {
+    title: "THỊ TRƯỜNG",
+    items: [
+      { href: "/", label: "Tổng quan", icon: Home, core: true },
+      { href: "/stocks", label: "Cổ phiếu VN", icon: CandlestickChart, core: true },
+      { href: "/crypto", label: "Tiền mã hóa", icon: Coins, core: true },
+      { href: "/forex", label: "Ngoại hối", icon: DollarSign },
+      { href: "/commodities", label: "Hàng hóa", icon: Boxes },
+      { href: "/macro-economic", label: "Kinh tế vĩ mô", icon: ChartNoAxesCombined },
+      { href: "/currency-interest-rate", label: "Lãi suất tiền tệ", icon: Landmark },
+    ],
+  },
+  {
+    title: "CÔNG CỤ",
+    items: [
+      { href: "/heatmap", label: "Bản đồ nhiệt", icon: Grid2x2 },
+      { href: "/screener", label: "Bộ lọc", icon: FlaskConical },
+      { href: "/news", label: "Tin tức", icon: Newspaper, core: true },
+      { href: "/reports", label: "Bản tin", icon: Globe2 },
+      { href: "/agent", label: "Trợ lý AI", icon: Bot },
+    ],
+  },
+  {
+    title: "DANH MỤC",
+    items: [
+      { href: "/portfolio", label: "Danh mục thông minh", icon: LayoutDashboard },
+      { href: "/watchlist", label: "Danh mục theo dõi", icon: Eye },
+      { href: "/settings", label: "Cài đặt", icon: Settings },
+    ],
+  },
+];
+
+function isActivePath(pathname: string, href: string) {
+  if (href === "/") return pathname === "/";
+  return pathname === href || pathname.startsWith(href + "/");
+}
+
+export function ShellInner({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [sideAnimating, setSideAnimating] = useState(false);
+  const sideAnimTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    try {
+      const v = localStorage.getItem("orca:sidebar:collapsed");
+      if (v === "1") setCollapsed(true);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
+
+  const toggleCollapsed = useCallback(() => {
+    setSideAnimating(true);
+    setCollapsed((v) => {
+      const next = !v;
+      try {
+        localStorage.setItem("orca:sidebar:collapsed", next ? "1" : "0");
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+    if (sideAnimTimer.current) clearTimeout(sideAnimTimer.current);
+    sideAnimTimer.current = setTimeout(() => setSideAnimating(false), 320);
+  }, []);
+
+  const onNav = useCallback(
+    (href: string, e: MouseEvent<HTMLAnchorElement>) => {
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+      e.preventDefault();
+      markAppNavigating();
+      startTransition(() => router.push(href));
+    },
+    [router],
+  );
+
+  const onHover = useCallback(
+    (href: string) => {
+      try {
+        router.prefetch(href);
+      } catch {
+        /* ignore */
+      }
+    },
+    [router],
+  );
+
+  const renderSidebar = (opts: { collapsed: boolean; mobile?: boolean }) => {
+    const isCollapsed = opts.collapsed;
+    const isMobile = opts.mobile === true;
+
+    const NavItem = ({
+      href,
+      label,
+      icon: Icon,
+    }: {
+      href: string;
+      label: string;
+      icon: ComponentType<{ className?: string }>;
+    }) => {
+      const active = isActivePath(pathname, href);
+      return (
+        <Link
+          href={href}
+          onClick={(e) => {
+            onNav(href, e);
+            if (isMobile) setMobileOpen(false);
+          }}
+          onMouseEnter={() => onHover(href)}
+          className={
+            "group relative flex shrink-0 items-center gap-2.5 rounded-lg leading-none orca-nav-item " +
+            (isMobile ? "min-h-11 text-[14px] " : "h-9 text-[13px] ") +
+            (isCollapsed ? "justify-center px-0" : isMobile ? "px-3" : "px-2.5") +
+            " " +
+            (active
+              ? "bg-accent-primary/15 font-medium text-accent-primary"
+              : "text-text-secondary hover:bg-surface-elevated hover:text-text-primary")
+          }
+          title={label}
+        >
+          <Icon className="size-4 shrink-0 opacity-90" />
+          <span
+            className={
+              "truncate orca-nav-item-label " +
+              (isCollapsed
+                ? "pointer-events-none ml-0 max-w-0 overflow-hidden opacity-0"
+                : isMobile
+                  ? "max-w-none flex-1 opacity-100"
+                  : "max-w-[160px] opacity-100")
+            }
+          >
+            {label}
+          </span>
+        </Link>
+      );
+    };
+
+    return (
+      <div className="flex h-full min-h-0 flex-col overflow-hidden">
+        <div
+          className={
+            "shrink-0 border-b border-border-subtle " +
+            (isCollapsed
+              ? "flex flex-col items-center gap-1.5 px-1 py-2.5"
+              : isMobile
+                ? "flex items-center gap-2 px-3 py-3.5"
+                : "flex min-h-[3.5rem] items-center gap-1 px-2 py-2")
+          }
+        >
+          <Link
+            href="/"
+            onClick={(e) => {
+              onNav("/", e);
+              if (isMobile) setMobileOpen(false);
+            }}
+            className={isCollapsed ? "grid place-items-center" : "min-w-0 flex-1"}
+            title="ORCA Financial"
+          >
+            {isCollapsed ? (
+              <OrcaMark size={28} />
+            ) : isMobile ? (
+              <OrcaMobileBrand />
+            ) : (
+              <OrcaWordmark size={32} subtitle className="w-full" />
+            )}
+          </Link>
+          {isMobile ? (
+            <button
+              type="button"
+              className="grid size-10 shrink-0 place-items-center rounded-lg text-text-muted hover:bg-surface-elevated hover:text-text-primary"
+              onClick={() => setMobileOpen(false)}
+              aria-label="Đóng menu"
+            >
+              <X className="size-5" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="grid size-8 shrink-0 place-items-center rounded-md text-text-muted transition-colors hover:bg-surface-elevated hover:text-text-primary"
+              onClick={toggleCollapsed}
+              aria-label={isCollapsed ? "Mở rộng sidebar" : "Thu gọn sidebar"}
+            >
+              {isCollapsed ? (
+                <ChevronsRight className="size-4" />
+              ) : (
+                <ChevronsLeft className="size-4" />
+              )}
+            </button>
+          )}
+        </div>
+
+        <nav
+          className={
+            "orca-sidebar-nav min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain py-3 " +
+            (isMobile ? "px-2.5" : "px-2")
+          }
+        >
+          {NAV_SECTIONS.map((section) => (
+            <div key={section.title} className="space-y-0.5">
+              <div
+                className={
+                  "px-2.5 text-[10px] font-semibold uppercase tracking-wider text-text-muted transition-[opacity,height,margin] duration-200 ease-out " +
+                  (isCollapsed
+                    ? "mb-0 h-0 overflow-hidden opacity-0"
+                    : isMobile
+                      ? "mb-1.5 opacity-100"
+                      : "mb-1 opacity-100")
+                }
+              >
+                {section.title}
+              </div>
+              {isCollapsed ? (
+                <div className="mx-auto mb-1 h-px w-6 bg-border-subtle/80" aria-hidden />
+              ) : null}
+              <div className={"flex flex-col " + (isMobile ? "gap-1" : "gap-0.5")}>
+                {section.items.map((item) => (
+                  <NavItem key={item.href} href={item.href} label={item.label} icon={item.icon} />
+                ))}
+              </div>
+            </div>
+          ))}
+        </nav>
+
+        <div className={"shrink-0 border-t border-border-subtle " + (isMobile ? "p-3" : "p-2")}>
+          <UserMenu collapsed={isCollapsed} />
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="flex h-full min-h-0 flex-col bg-background-primary text-text-primary">
+      <PriceAlertEngine />
+      <div className="sticky top-0 z-30 shrink-0 border-b border-border-subtle bg-surface-base">
+        <TickerTape />
+      </div>
+      <div className="relative z-10 flex min-h-0 flex-1">
+        <aside
+          className={
+            "orca-aside relative hidden h-full shrink-0 overflow-hidden border-r border-border-subtle bg-surface-base md:block " +
+            (sideAnimating ? "is-collapsing " : "") +
+            (collapsed ? "w-[56px]" : "w-[268px]")
+          }
+        >
+          <div className="orca-sidebar h-full">{renderSidebar({ collapsed })}</div>
+        </aside>
+
+        <div
+          className={
+            "fixed inset-0 z-50 md:hidden " +
+            (mobileOpen ? "pointer-events-auto" : "pointer-events-none")
+          }
+          aria-hidden={!mobileOpen}
+        >
+          <button
+            type="button"
+            className={
+              "orca-drawer-backdrop absolute inset-0 bg-black/50 transition-opacity duration-200 " +
+              (mobileOpen ? "opacity-100" : "opacity-0")
+            }
+            aria-label="Đóng menu"
+            onClick={() => setMobileOpen(false)}
+          />
+          <aside
+            className={
+              "orca-drawer absolute left-0 top-0 flex h-full w-[min(320px,94vw)] flex-col overflow-hidden bg-surface-base pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)] shadow-2xl transition-transform duration-200 ease-out " +
+              (mobileOpen ? "translate-x-0" : "-translate-x-full")
+            }
+          >
+            {renderSidebar({ collapsed: false, mobile: true })}
+          </aside>
+        </div>
+
+        <div className="flex min-w-0 flex-1 flex-col">
+          <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border-subtle px-3">
+            <button
+              type="button"
+              className="grid size-9 place-items-center rounded-lg text-text-secondary transition-colors hover:bg-surface-elevated md:hidden"
+              onClick={() => setMobileOpen(true)}
+              aria-label="Mở menu"
+            >
+              <Menu className="size-4.5" />
+            </button>
+            <div className="min-w-0 flex-1">
+              <GlobalSearch />
+            </div>
+            <NotifBell />
+            <Link
+              href="/settings"
+              className="grid size-9 place-items-center rounded-lg text-text-secondary transition-colors hover:bg-surface-elevated hover:text-text-primary"
+              aria-label="Cài đặt"
+            >
+              <Settings className="size-4" />
+            </Link>
+          </header>
+          <main className="orca-main-scroll min-h-0 flex-1 overflow-y-auto">
+            <ErrorBoundary name="page" resetKey={pathname}>
+              <div className="orca-page-enter p-3 sm:p-4">{children}</div>
+            </ErrorBoundary>
+          </main>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function UserMenu({ collapsed }: { collapsed: boolean }) {
+  const router = useRouter();
+  const { settings } = useSettings();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const { data: me, mutate } = useApi<{ user: { email: string; name: string | null } }>(
+    "/api/v1/auth/me",
+  );
+
+  useEffect(() => {
+    const onDoc = (e: Event) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, []);
+
+  const displayName =
+    settings.profile.displayName || me?.user?.name || me?.user?.email?.split("@")[0] || "";
+  const initials = displayName.slice(0, 2).toUpperCase() || "?";
+
+  const logout = async () => {
+    try {
+      await fetch("/api/v1/auth/logout", { method: "POST" });
+    } catch {
+      /* ignore */
+    }
+    void mutate();
+    router.push("/login");
+  };
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left hover:bg-surface-elevated"
+      >
+        <span className="grid size-8 place-items-center overflow-hidden rounded-md border border-border-subtle bg-surface-elevated text-[11px] font-bold">
+          {settings.profile.avatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={settings.profile.avatarUrl} alt="" className="size-full object-cover" />
+          ) : settings.profile.avatarStyle === "orca" && me?.user ? (
+            <OrcaMark size={28} className="rounded-md" />
+          ) : me?.user ? (
+            initials
+          ) : (
+            "?"
+          )}
+        </span>
+        {!collapsed ? (
+          <span className="min-w-0 flex-1 truncate text-[12px] text-text-secondary">
+            {me?.user ? displayName || me.user.email : "Đăng nhập"}
+          </span>
+        ) : null}
+      </button>
+      {open ? (
+        <div className="absolute bottom-full left-0 z-50 mb-1 w-52 overflow-hidden rounded-xl border border-border-default bg-surface-modal shadow-2xl">
+          {me?.user ? (
+            <>
+              <div className="border-b border-border-subtle px-3 py-2.5">
+                <div className="truncate text-[12.5px] font-semibold">{displayName || me.user.email}</div>
+                <div className="truncate text-[10.5px] text-text-muted">{me.user.email}</div>
+              </div>
+              <Link
+                href="/settings"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-2 px-3 py-2.5 text-[12.5px] text-text-secondary hover:bg-surface-elevated"
+              >
+                <Settings className="size-3.5" /> Cài đặt
+              </Link>
+              <button
+                type="button"
+                onClick={() => void logout()}
+                className="flex w-full items-center gap-2 px-3 py-2.5 text-[12.5px] text-negative hover:bg-surface-elevated"
+              >
+                <LogOut className="size-3.5" /> Đăng xuất
+              </button>
+            </>
+          ) : (
+            <Link
+              href="/login"
+              onClick={() => setOpen(false)}
+              className="block px-3 py-2.5 text-[12.5px] text-accent-primary hover:bg-surface-elevated"
+            >
+              Đăng nhập
+            </Link>
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
+}

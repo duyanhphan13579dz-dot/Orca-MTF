@@ -1,0 +1,51 @@
+{
+  "name": "orca-mtf",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Orca-MTF — Multi-Timeframe Financial Intelligence Platform with Cloudflare Pages deployment",
+  "engines": {
+    "node": ">=20.9.0"
+  },
+  "scripts": {
+    "dev": "node scripts/dev.js",
+    "build": "NODE_ENV=production next build",
+    "start": "next start -p 3000 -H 0.0.0.0",
+    "build:cloudflare": "NODE_ENV=production npx @cloudflare/next-on-pages",
+    "deploy:cloudflare": "npm run build:cloudflare && npx wrangler pages deploy .vercel/output/static",
+    "preview:cloudflare": "npm run build:cloudflare && npx wrangler pages dev .vercel/output/static",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --import ./test/test-setup/register-stub.mjs --require ./test/test-setup/patch-server-only.cjs --test src/lib/__tests__/chart-engine.test.ts src/lib/__tests__/divergence.test.ts src/lib/__tests__/candlestick-patterns.test.ts src/lib/__tests__/valuation-phase1.test.ts src/lib/__tests__/valuation-phase2.test.ts src/lib/__tests__/valuation-phase3.test.ts src/lib/__tests__/valuation-phase4.test.ts src/lib/__tests__/valuation-phase5.test.ts src/lib/__tests__/valuation-phase6.test.ts src/lib/__tests__/valuation-pipeline.test.ts"
+  },
+  "dependencies": {
+    "@tailwindcss/postcss": "4.1.17",
+    "@types/node": "22.19.15",
+    "@types/pg": "8.18.0",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "clsx": "^2.1.1",
+    "dotenv": "17.3.1",
+    "drizzle-orm": "0.45.2",
+    "ioredis": "^5.6.1",
+    "jose": "^6.0.11",
+    "lightweight-charts": "^5.2.1",
+    "lucide-react": "^0.545.0",
+    "next": "16.2.6",
+    "pg": "8.20.0",
+    "postcss": "8.5.8",
+    "react": "19.2.6",
+    "react-dom": "19.2.6",
+    "server-only": "^0.0.1",
+    "swr": "^2.3.3",
+    "tailwindcss": "4.1.17",
+    "tsx": "^4.20.6",
+    "typescript": "5.9.3"
+  },
+  "devDependencies": {
+    "@cloudflare/next-on-pages": "^1.13.8",
+    "drizzle-kit": "0.31.10",
+    "eslint": "9.39.4",
+    "eslint-config-next": "16.2.6",
+    "wrangler": "^3.114.0"
+  }
+}

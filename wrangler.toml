@@ -1,0 +1,21 @@
+# Cloudflare Pages / Workers Configuration for Orca-MTF
+# Project: Orca-MTF (Vietnamese Multi-Timeframe Financial Intelligence Platform)
+
+name = "orca-mtf"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+pages_build_output_dir = ".vercel/output/static"
+
+# Environment variables for Cloudflare Pages deployment
+[vars]
+NEXT_TELEMETRY_DISABLED = "1"
+NODE_ENV = "production"
+
+# Example D1 / KV / Hyperdrive bindings (can be enabled via Cloudflare Dashboard)
+# [[kv_namespaces]]
+# binding = "ORCA_KV_CACHE"
+# id = "your_kv_namespace_id"
+
+# [[hyperdrive]]
+# binding = "HYPERDRIVE"
+# id = "your_hyperdrive_id"

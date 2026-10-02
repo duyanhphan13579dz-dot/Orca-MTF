@@ -1,0 +1,6 @@
+{
+  "name": "Orca-MTF",
+  "description": "Nền tảng phân tích tài chính đa khung thời gian & thời gian thực — Cổ phiếu Việt Nam, Crypto, Forex, Hàng hóa, Định giá, SMC/ICT và AI Research. Tối ưu triển khai Cloudflare Pages.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
