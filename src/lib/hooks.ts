@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import useSWR from "swr";
 import type { ApiResponse } from "./types";
 import { getSettingsSnapshot, resolveRefresh } from "./settings";
@@ -104,24 +104,25 @@ export function useApi<T>(url: string | null, opts?: { refreshInterval?: number;
   const visible = usePageVisible();
 
   const baseRefresh = resolveRefresh(opts?.refreshInterval);
-  const freshnessRef = useRef<string | undefined>(undefined);
-
-  const adaptiveBase = (() => {
-    const f = freshnessRef.current;
-    if (f === "STALE" || f === "UNAVAILABLE") return Math.max(baseRefresh, 28_000);
-    if (f === "DELAYED" || f === "DEGRADED") return Math.max(baseRefresh, 18_000);
-    if (f === "LIVE") return Math.max(8_000, Math.min(baseRefresh, 12_000));
-    return baseRefresh;
-  })();
 
   const inNavFreeze = isNavFrozen();
   const hasWarm = url ? clientCacheHas(url, 90_000) : false;
-  const refreshInterval = visible && rt.liveUpdates && !inNavFreeze ? adaptiveBase : 0;
 
   const fallbackData = useMemo(() => {
     if (!url) return undefined;
     return clientCacheGet<ApiResponse<T>>(url);
   }, [url]);
+
+  const [freshness, setFreshness] = useState<string | undefined>(() => fallbackData?.meta?.freshness);
+
+  const adaptiveBase = (() => {
+    if (freshness === "STALE" || freshness === "UNAVAILABLE") return Math.max(baseRefresh, 28_000);
+    if (freshness === "DELAYED" || freshness === "DEGRADED") return Math.max(baseRefresh, 18_000);
+    if (freshness === "LIVE") return Math.max(8_000, Math.min(baseRefresh, 12_000));
+    return baseRefresh;
+  })();
+
+  const refreshInterval = visible && rt.liveUpdates && !inNavFreeze ? adaptiveBase : 0;
 
   const { data, error, isLoading, isValidating, mutate } = useSWR<ApiResponse<T>>(
     url,
@@ -142,16 +143,12 @@ export function useApi<T>(url: string | null, opts?: { refreshInterval?: number;
       onSuccess: (payload) => {
         if (payload?.success) {
           clientCacheSet(url!, payload);
-          if (payload.meta?.freshness) freshnessRef.current = payload.meta.freshness;
+          if (payload.meta?.freshness) setFreshness(payload.meta.freshness);
         }
       },
       onError: () => {},
     },
   );
-
-  if (data?.success && data.meta?.freshness && freshnessRef.current !== data.meta.freshness) {
-    freshnessRef.current = data.meta.freshness;
-  }
 
   useEffect(() => {
     if (!url || !visible) return;

@@ -23,7 +23,7 @@ export function useMarketStream(
   const enabled = opts?.enabled !== false;
   const asset = opts?.asset ?? "auto";
   const [quotes, setQuotes] = useState<Record<string, StreamQuote>>({});
-  const [status, setStatus] = useState<MarketStreamStatus>("idle");
+  const [streamStatus, setStreamStatus] = useState<MarketStreamStatus>("idle");
   const [lastError, setLastError] = useState<string | null>(null);
   const esRef = useRef<EventSource | null>(null);
   const key = symbols
@@ -32,9 +32,10 @@ export function useMarketStream(
     .sort()
     .join(",");
 
+  const status: MarketStreamStatus = !enabled || !key ? "idle" : streamStatus;
+
   useEffect(() => {
     if (!enabled || !key) {
-      setStatus("idle");
       esRef.current?.close();
       esRef.current = null;
       return;
@@ -46,14 +47,14 @@ export function useMarketStream(
 
     const connect = () => {
       if (cancelled) return;
-      setStatus("connecting");
+      setStreamStatus("connecting");
       const url = `/api/v1/market/stream?symbols=${encodeURIComponent(key)}&asset=${asset}`;
       const es = new EventSource(url);
       esRef.current = es;
 
       es.addEventListener("hello", () => {
         if (cancelled) return;
-        setStatus("open");
+        setStreamStatus("open");
         setLastError(null);
         retry = 0;
       });
@@ -71,7 +72,7 @@ export function useMarketStream(
 
       es.onerror = () => {
         if (cancelled) return;
-        setStatus("error");
+        setStreamStatus("error");
         setLastError("stream disconnected");
         es.close();
         esRef.current = null;
@@ -87,7 +88,7 @@ export function useMarketStream(
       if (timer) window.clearTimeout(timer);
       esRef.current?.close();
       esRef.current = null;
-      setStatus("closed");
+      setStreamStatus("closed");
     };
   }, [enabled, key, asset]);
 
