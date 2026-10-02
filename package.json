@@ -11,6 +11,7 @@
     "build": "NODE_ENV=production next build",
     "start": "next start -p 3000 -H 0.0.0.0",
     "build:cloudflare": "NODE_ENV=production npx @cloudflare/next-on-pages",
+    "deploy": "npx wrangler pages deploy .vercel/output/static",
     "deploy:cloudflare": "npm run build:cloudflare && npx wrangler pages deploy .vercel/output/static",
     "preview:cloudflare": "npm run build:cloudflare && npx wrangler pages dev .vercel/output/static",
     "lint": "eslint .",

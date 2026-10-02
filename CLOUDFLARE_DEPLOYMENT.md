@@ -89,3 +89,48 @@ Cần thêm 2 Secrets trong **GitHub Repository** > **Settings** > **Secrets and
 | `public/_headers` | Tối ưu bảo mật (HSTS, CSP, X-Frame-Options) và cache tài nguyên tĩnh trên Cloudflare Edge |
 | `public/_routes.json` | Phân luồng Edge Functions và Static Assets trên Cloudflare CDN |
 | `.github/workflows/deploy-cloudflare.yml` | Pipeline CI/CD tự động hóa qua GitHub Actions |
+
+---
+
+## ⚠️ Khắc phục lỗi: `It looks like you've run a Workers-specific command in a Pages project`
+
+Nếu bạn gặp lỗi này trong nhật ký build của Cloudflare:
+```
+✘ [ERROR] It looks like you've run a Workers-specific command in a Pages project.
+  For Pages, please run `wrangler pages deploy` instead.
+```
+
+### Nguyên nhân:
+Dự án được cấu hình là **Cloudflare Pages** (sử dụng `@cloudflare/next-on-pages` và output `.vercel/output/static`). Tuy nhiên, trong cấu hình build trên Cloudflare Dashboard:
+1. Bạn đã tạo project dưới mục **Workers** thay vì **Pages**, hoặc
+2. Bạn đã đặt **Deploy command** là `npx wrangler deploy` (lệnh dành riêng cho Workers, không áp dụng cho Pages).
+3. **Build command** đang là `npm run build` thay vì `npm run build:cloudflare`.
+
+### Cách sửa:
+
+#### Lựa chọn 1 (Khuyên dùng): Tạo đúng dưới mục Cloudflare Pages
+1. Vào **Cloudflare Dashboard** > **Workers & Pages** > **Create application** > Chọn tab **Pages** (không chọn Workers) > **Connect to Git**.
+2. Chọn repository `Orca-MTF`.
+3. Cấu hình:
+   - **Framework preset**: `Next.js`
+   - **Build command**: `npx @cloudflare/next-on-pages` (hoặc `npm run build:cloudflare`)
+   - **Build output directory**: `.vercel/output/static`
+   *(Ở tab Pages, Cloudflare tự động deploy thư mục build mà không cần lệnh deploy riêng).*
+
+#### Lựa chọn 2: Nếu giữ nguyên project hiện tại trong Cloudflare Dashboard
+Vào **Settings** > **Builds & deployments** > **Build configuration**:
+- **Build command**:
+  ```bash
+  npm run build:cloudflare
+  ```
+- **Deploy command**:
+  ```bash
+  npx wrangler pages deploy .vercel/output/static --project-name=orca-mtf
+  ```
+  *(hoặc `npm run deploy`)*
+- **Build output directory**:
+  ```bash
+  .vercel/output/static
+  ```
+- Lưu lại và bấm **Retry deployment** hoặc push commit mới.
+
